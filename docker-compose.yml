@@ -1,0 +1,67 @@
+services:
+  postgres:
+    hostname: postgres
+    image: postgres:15-alpine
+    restart: unless-stopped
+    volumes:
+      - /srv/dendrite/pg:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: itsasecret
+      POSTGRES_USER: dendrite
+      POSTGRES_DATABASE: dendrite
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dendrite"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  sliding-proxy:
+    image: ghcr.io/matrix-org/sliding-sync:latest
+    restart: unless-stopped
+    expose:
+      - 8881
+    environment:
+      - "SYNCV3_SECRET=my-super-secret-string"
+      - "SYNCV3_SERVER=https://matrix.acme.corp"
+      - "SYNCV3_DB=user=dendrite dbname=sync sslmode=disable host=postgres password=itsasecret"
+      - "SYNCV3_BINDADDR=0.0.0.0:8881"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mtx-ss.rule=Host(`matrix-ss.acme.corp`)
+      - traefik.http.routers.mtx-ss.entrypoints=web
+      - traefik.http.routers.mtx-ss.service=mtx-ss
+      - traefik.http.services.mtx-ss.loadbalancer.server.port=8881
+    depends_on:
+      - postgres
+    networks:
+      - net-traefik
+      - internal
+
+  monolith:
+    hostname: monolith
+    image: matrixdotorg/dendrite-monolith:main
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    expose:
+      - 8008
+      - 8448
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mtx.rule=Host(`matrix.acme.corp`)
+      - traefik.http.routers.mtx.entrypoints=web
+      - traefik.http.routers.mtx.service=mtx
+      - traefik.http.services.mtx.loadbalancer.server.port=8008
+    volumes:
+      - /srv/dendrite/config:/etc/dendrite
+      - /srv/dendrite/var:/var/dendrite
+    networks:
+      - net-traefik
+      - internal
+
+networks:
+  internal:
+  net-traefik:
+    external: true
