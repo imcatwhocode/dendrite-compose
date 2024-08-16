@@ -36,7 +36,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - net-traefik
+      - traefik
       - internal
 
   monolith:
@@ -58,10 +58,10 @@ services:
       - /srv/dendrite/config:/etc/dendrite
       - /srv/dendrite/var:/var/dendrite
     networks:
-      - net-traefik
+      - traefik
       - internal
 
 networks:
   internal:
-  net-traefik:
+  traefik:
     external: true
