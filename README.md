@@ -4,4 +4,4 @@
 
 ![This is fine comic strip](.github/this-is-fine.webp)
 
-_This is fine comic strip by KC Green_
+_– This is fine comic strip by KC Green._
